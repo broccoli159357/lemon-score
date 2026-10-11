@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node --env-file-if-exists=.env src/main.js",
-    "dev": "COOKIE_SECURE=0 DB_PATH=./data/dev.sqlite node --watch src/main.js",
+    "dev": "PORT=${PORT:-3100} COOKIE_SECURE=0 DB_PATH=./data/dev.sqlite node --watch src/main.js",
     "test": "node --test 'test/*.test.js'",
     "cleanup": "node --env-file-if-exists=.env src/cleanup-cli.js"
   },

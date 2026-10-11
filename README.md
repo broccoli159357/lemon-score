@@ -33,7 +33,7 @@ deploy/          systemd・リバースプロキシ・バックアップの例
 npm install
 ```
 
-開発（HTTP・Cookieの Secure なし・`./data/dev.sqlite`）:
+開発（http://localhost:3100、Cookieの Secure なし、`./data/dev.sqlite`。ポートは `PORT=` で変更可）:
 
 ```bash
 npm run dev

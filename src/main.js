@@ -20,6 +20,11 @@ runCleanup();
 const timer = setInterval(runCleanup, cfg.cleanupIntervalMs);
 
 const server = createServer(game, cfg);
+server.on('error', (e) => {
+  if (e.code === 'EADDRINUSE') console.error(`ポート ${cfg.port} は他のアプリが使用中です。PORT=3200 のように別の番号を指定するか、そのアプリを止めてください。`);
+  else console.error(`起動できませんでした: ${e.message}`);
+  process.exit(1);
+});
 server.listen(cfg.port, cfg.host, () => {
   console.log(`レモンスコア: http://${cfg.host}:${cfg.port} で待ち受け中 (DB: ${cfg.dbPath}, 公開URL: ${cfg.baseUrl || '(Hostヘッダーから自動)'})`);
 });
