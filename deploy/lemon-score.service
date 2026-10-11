@@ -1,0 +1,23 @@
+# /etc/systemd/system/lemon-score.service
+[Unit]
+Description=Lemon Score web app
+After=network.target
+
+[Service]
+Type=simple
+User=lemon
+Group=lemon
+WorkingDirectory=/opt/lemon-score
+EnvironmentFile=/etc/lemon-score.env
+ExecStart=/usr/bin/node src/main.js
+Restart=on-failure
+RestartSec=3
+# ハードニング
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/lemon-score
+
+[Install]
+WantedBy=multi-user.target

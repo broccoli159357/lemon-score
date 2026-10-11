@@ -1,0 +1,19 @@
+{
+  "name": "lemon-score",
+  "version": "0.1.0",
+  "private": true,
+  "description": "レモンスコア — メロンソーダのレモンポーション個数当てゲームの記録・集計Webアプリ",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/main.js",
+    "dev": "COOKIE_SECURE=0 DB_PATH=./data/dev.sqlite node --watch src/main.js",
+    "test": "node --test 'test/*.test.js'",
+    "cleanup": "node --env-file-if-exists=.env src/cleanup-cli.js"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
+  }
+}
