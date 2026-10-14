@@ -785,7 +785,6 @@ function renderResult() {
       return h('div', { class: `round ${hit ? 'hit' : 'miss'}` },
         h('div', { class: 'head' }, h('span', {}, `${r.number}杯目［${r.b_nickname}］`), h('span', { class: 'verdict' }, hit ? '🎯 正解' : `❌ はずれ ${fmtSigned(r.error)}`)),
         h('div', {}, `実投入 ${r.actual_count}個 → 予想 ${r.guess_count}個`),
-        h('div', { class: 'small muted' }, r.condition),
       );
     }) : h('p', { class: 'muted' }, '有効な杯はありません。'),
     voids.length ? [h('h3', {}, '無効にした杯'), voids.map((r) => h('div', { class: 'round void' },
