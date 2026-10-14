@@ -4,8 +4,8 @@ import { openDb } from '../src/db.js';
 import { Game } from '../src/game.js';
 import { createServer } from '../src/server.js';
 
-export async function startApp({ dbPath = ':memory:', clock } = {}) {
-  const cfg = loadConfig({ dbPath, baseUrl: 'https://lemon.example.test', cookieSecure: false, rateLimitPerMinute: 100000, port: 0 });
+export async function startApp({ dbPath = ':memory:', clock, baseUrl = 'https://lemon.example.test' } = {}) {
+  const cfg = loadConfig({ dbPath, baseUrl, cookieSecure: false, rateLimitPerMinute: 100000, port: 0 });
   const db = openDb(dbPath);
   const now = clock ?? { t: Date.UTC(2026, 9, 10, 10, 30) };
   const game = new Game(db, cfg, () => now.t);

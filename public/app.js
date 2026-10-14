@@ -8,6 +8,10 @@ const FATIGUE = ['疲れていない', '少し疲れている', 'そこそこ疲
 const ROLE_LABEL = { A: '飲む人', B: '入れる人' };
 const ROLE_HELP = { A: '飲んで個数を当てる（1人）', B: 'レモンを入れる（交代で担当）' };
 
+// サブパス（例: https://example.com/lemon/）でも動くよう、<base href> からベースパスを得る。
+// 画面内のパスはすべて「ベースパス抜き」で書き、通信・リンク・履歴の直前に付け足す。
+const BASE = new URL(document.baseURI).pathname.replace(/\/+$/, '');
+const withBase = (p) => (p.startsWith('/') ? BASE + p : p);
 const $app = document.getElementById('app');
 const $net = document.getElementById('net');
 
@@ -21,6 +25,7 @@ function h(tag, props, ...kids) {
     else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
     else if (k === 'text') el.textContent = v;
     else if (v === true) el.setAttribute(k, '');
+    else if ((k === 'href' || k === 'src') && typeof v === 'string') el.setAttribute(k, withBase(v));
     else el.setAttribute(k, v);
   }
   for (const kid of kids.flat(Infinity)) {
@@ -45,7 +50,7 @@ async function api(method, path, body) {
   }
   let res;
   try {
-    res = await fetch(path, opt);
+    res = await fetch(withBase(path), opt);
   } catch {
     setOnline(false);
     return { ok: false, network: true, error: { code: 'NETWORK', message: '通信できませんでした。電波の良い場所でもう一度お試しください' } };
@@ -111,13 +116,13 @@ function errorBox(err) {
 // ---------- ルーティング ----------
 
 function go(path) {
-  history.pushState(null, '', path);
+  history.pushState(null, '', withBase(path));
   route();
 }
 window.addEventListener('popstate', route);
 document.addEventListener('click', (e) => {
   const a = e.target.closest('a[data-nav]');
-  if (a) { e.preventDefault(); go(a.getAttribute('href')); }
+  if (a) { e.preventDefault(); go(a.getAttribute('href').slice(BASE.length) || '/'); }
 });
 
 let G = null; // 現在のゲーム画面の状態
@@ -125,7 +130,7 @@ let G = null; // 現在のゲーム画面の状態
 function route() {
   stopPolling();
   G = null;
-  const p = location.pathname;
+  const p = location.pathname.startsWith(BASE) ? location.pathname.slice(BASE.length) || '/' : location.pathname;
   const m = p.match(/^\/join\/([A-Za-z0-9_-]+)$/);
   if (m) return openInvite(m[1]);
   return showTop();

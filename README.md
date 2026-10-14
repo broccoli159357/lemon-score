@@ -48,6 +48,10 @@ npm test
 本番: `.env.example` を参考に環境変数を設定して `npm start`（`.env` があれば読み込む）。
 詳細は [docs/operations.md](docs/operations.md)。
 
+既存サイトの下（例：`https://example.com/lemon/`）に置く場合は、`BASE_URL=https://example.com/lemon` とし、
+リバースプロキシで `/lemon` を取り除いて転送する（[deploy/nginx-subpath.conf.example](deploy/nginx-subpath.conf.example)）。
+Cookie はそのパスに限定される。
+
 ## 設定項目
 
 | 環境変数 | 既定値 | 内容 |

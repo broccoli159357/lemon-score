@@ -401,3 +401,24 @@ describe('再送・競合', () => {
     }
   });
 });
+
+describe('サブパス配下での公開', () => {
+  test('BASE_URLのパスを招待URL・<base>・Cookieに反映する', async () => {
+    const { buildInviteUrl } = await import('../src/server.js');
+    assert.equal(buildInviteUrl('https://example.com/lemon', 'tok'), 'https://example.com/lemon/join/tok?openExternalBrowser=1');
+    assert.equal(buildInviteUrl('https://example.com/lemon/', 'tok'), 'https://example.com/lemon/join/tok?openExternalBrowser=1');
+    const sub = await startApp({ baseUrl: 'https://example.com/lemon' });
+    try {
+      const html = await sub.client().get('/join/abc');
+      assert.match(html.text, /<base href="\/lemon\/">/);
+      const c = sub.client();
+      const r = await c.req('POST', '/api/rooms', { nickname: 'x', role: 'A' }, { headers: { origin: 'https://example.com' } });
+      assert.equal(r.status, 200);
+      assert.match(r.headers.getSetCookie()[0], /Path=\/lemon;/);
+      const st = await c.ok('GET', `/api/rooms/${r.json.room_id}/state`);
+      assert.equal(st.room.invite_url, `https://example.com/lemon/join/${r.json.invite_token}?openExternalBrowser=1`);
+    } finally {
+      await sub.close();
+    }
+  });
+});

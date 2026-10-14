@@ -15,15 +15,16 @@ const STATIC = {
 const SPA_ROUTES = [/^\/$/, /^\/join\/[A-Za-z0-9_-]+$/];
 
 const SECURITY_HEADERS = {
-  'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+  'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
   'X-Content-Type-Options': 'nosniff',
   // 招待URLのトークンを外部サイトへ Referer で渡さない
   'Referrer-Policy': 'no-referrer',
   'X-Frame-Options': 'DENY',
 };
 
-export function buildInviteUrl(origin, inviteToken) {
-  const u = new URL(`/join/${encodeURIComponent(inviteToken)}`, origin);
+/** base は公開URL（サブパス込み可。例: https://example.com/lemon） */
+export function buildInviteUrl(base, inviteToken) {
+  const u = new URL(`${base.replace(/\/+$/, '')}/join/${encodeURIComponent(inviteToken)}`);
   // LINEから押したときに外部ブラウザで開く指定。既存のキーは重複させない。
   u.searchParams.set('openExternalBrowser', '1');
   return u.toString();
@@ -61,6 +62,10 @@ class RateLimiter {
 export function createServer(game, cfg) {
   const limiter = new RateLimiter(cfg.rateLimitPerMinute);
   const cookieMaxAge = Math.ceil((cfg.finishedTtlMs + cfg.activeTtlMs) / 1000);
+  // 公開URLのパス部分（例: BASE_URL=https://example.com/lemon → /lemon）。リバースプロキシがこれを取り除いて転送する前提
+  const basePath = cfg.baseUrl ? new URL(cfg.baseUrl).pathname.replace(/\/+$/, '') : '';
+  const indexHtml = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8')
+    .replace('<base href="/">', `<base href="${basePath}/">`);
 
   const origin = (req) => {
     if (cfg.baseUrl) return cfg.baseUrl;
@@ -71,7 +76,7 @@ export function createServer(game, cfg) {
   const clientIp = (req) => (cfg.trustProxy && req.headers['x-forwarded-for'] ? req.headers['x-forwarded-for'].split(',')[0].trim() : req.socket.remoteAddress) || '?';
 
   function setCookie(res, name, value, maxAge) {
-    const attrs = [`${name}=${encodeURIComponent(value)}`, 'Path=/', 'HttpOnly', 'SameSite=Lax', `Max-Age=${maxAge}`];
+    const attrs = [`${name}=${encodeURIComponent(value)}`, `Path=${basePath || '/'}`, 'HttpOnly', 'SameSite=Lax', `Max-Age=${maxAge}`];
     if (cfg.cookieSecure) attrs.push('Secure');
     const prev = res.getHeader('Set-Cookie') || [];
     res.setHeader('Set-Cookie', [...prev, attrs.join('; ')]);
@@ -208,19 +213,15 @@ export function createServer(game, cfg) {
   });
 
   function serveStatic(req, res, pathname) {
-    let file = null;
-    let type = null;
     if (STATIC[pathname]) {
-      file = path.join(PUBLIC_DIR, pathname);
-      type = STATIC[pathname];
-    } else if (SPA_ROUTES.some((r) => r.test(pathname))) {
-      file = path.join(PUBLIC_DIR, 'index.html');
-      type = 'text/html; charset=utf-8';
+      send(res, 200, fs.readFileSync(path.join(PUBLIC_DIR, pathname)), { 'Content-Type': STATIC[pathname], 'Cache-Control': 'no-cache' });
+      return true;
     }
-    if (!file) return false;
-    const body = fs.readFileSync(file);
-    send(res, 200, body, { 'Content-Type': type, 'Cache-Control': type.startsWith('text/html') ? 'no-store' : 'no-cache' });
-    return true;
+    if (SPA_ROUTES.some((r) => r.test(pathname))) {
+      send(res, 200, indexHtml, { 'Content-Type': 'text/html; charset=utf-8' });
+      return true;
+    }
+    return false;
   }
 
   async function handle(req, res) {
