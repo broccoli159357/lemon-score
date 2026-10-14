@@ -765,9 +765,18 @@ function renderResult() {
     h('h1', {}, '結果'),
     h('p', { class: 'muted small' }, `${fmtDate(res.room.started_at)} ・ 飲む人：${res.a_nickname}`),
     // 一番上は短い要約だけにして、すぐ各杯が見えるようにする
-    h('div', { class: 'stats summary' },
-      h('div', { class: 'stat' }, h('div', { class: 'k' }, '正答率'), h('div', { class: 'v' }, fmtPct(s.accuracy)), h('div', { class: 'k' }, `${s.valid_count}杯中 ${s.correct_count}杯正解`)),
-      h('div', { class: 'stat' }, h('div', { class: 'k' }, '合計レモン'), h('div', { class: 'v' }, `${res.total_lemons}個`), h('div', { class: 'k' }, '飲んだ杯の合計')),
+    // 一番上：正答率・合計レモン・調子の目安をひとまとまりで
+    h('section', { class: `card summary${cond ? ` lv${cond.level}` : ''}` },
+      h('div', { class: 'stats' },
+        h('div', { class: 'stat' }, h('div', { class: 'k' }, '正答率'), h('div', { class: 'v' }, fmtPct(s.accuracy)), h('div', { class: 'k' }, `${s.valid_count}杯中 ${s.correct_count}杯正解`)),
+        h('div', { class: 'stat' }, h('div', { class: 'k' }, '合計レモン'), h('div', { class: 'v' }, `${res.total_lemons}個`), h('div', { class: 'k' }, '飲んだ杯の合計')),
+      ),
+      cond ? h('div', { class: 'condition' },
+        h('div', { class: 'k small' }, '調子の目安'),
+        h('div', { class: 'cond-text' }, cond.text),
+        cond.trend ? h('p', {}, cond.trend) : null,
+        h('p', { class: 'small muted' }, 'ズレが小さいほど元気、大きいほどお疲れ寄り、という遊びの判定です。'),
+      ) : null,
     ),
 
     // 1. 各杯
@@ -798,12 +807,6 @@ function renderResult() {
         stat('±1以内', fmtPct(s.within_one_rate), true),
       ),
     ),
-    cond ? h('section', { class: `card condition lv${cond.level}` },
-      h('div', { class: 'k small' }, '調子の目安'),
-      h('div', { class: 'cond-text' }, cond.text),
-      cond.trend ? h('p', {}, cond.trend) : null,
-      h('p', { class: 'small muted' }, 'ズレが小さいほど元気、大きいほどお疲れ寄り、という遊びの判定です。'),
-    ) : null,
 
     // 3. コピー
     h('h2', {}, '結果をコピー'),
