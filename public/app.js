@@ -775,7 +775,6 @@ function renderResult() {
         h('div', { class: 'k small' }, '調子の目安'),
         h('div', { class: 'cond-text' }, `${cond.emoji} ${cond.text}`),
         cond.trend ? h('p', {}, cond.trend) : null,
-        h('p', { class: 'small muted' }, 'ズレが小さいほど元気、大きいほどお疲れ寄り、という遊びの判定です。'),
       ) : null,
     ),
 
