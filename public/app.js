@@ -4,7 +4,6 @@
 // ユーザー入力（ニックネーム・理由）は必ず textContent で表示し、HTMLとして解釈しない。
 
 const POLL_MS = 2500;
-const FATIGUE = ['疲れていない', '少し疲れている', 'そこそこ疲れている', 'かなり疲れている', 'とても疲れている'];
 const ROLE_LABEL = { A: '飲む人', B: '入れる人' };
 const ROLE_HELP = { A: '飲んで個数を当てる（1人）', B: 'レモンを入れる（交代で担当）' };
 
@@ -478,7 +477,6 @@ function renderLobby() {
     nodes.push(h('p', { class: 'muted center' }, '進行役が開始するのを待っています。'));
   }
 
-  if (st.me.id === st.a_member_id) nodes.push(fatigueCard());
   nodes.push(inviteCard());
   return nodes;
 }
@@ -498,25 +496,6 @@ function inviteCard() {
     h('div', { class: 'row' },
       h('button', { class: 'grow', onclick: async (e) => { e.target.textContent = (await copyText(url)) ? 'コピーしました' : 'コピーできませんでした。上のURLを長押ししてコピーしてください'; } }, 'URLをコピー')),
     h('img', { class: 'qr', src: `/api/rooms/${G.roomId}/qr.svg`, alt: '招待URLのQRコード' }),
-  );
-}
-
-function fatigueCard() {
-  const cur = G.st.me.fatigue;
-  return h('section', { class: 'card' },
-    h('label', { for: 'fatigue' }, '疲れ具合（任意）'),
-    h('select', {
-      id: 'fatigue', 'data-focus': 'fatigue',
-      onchange: async (e) => {
-        const v = e.target.value === '' ? null : Number(e.target.value);
-        const r = await api('POST', `/api/rooms/${G.roomId}/fatigue`, { level: v });
-        if (!r.ok) return alert(r.error.message);
-        G.st.me.fatigue = v;
-      },
-    },
-    h('option', { value: '', selected: cur === null || cur === undefined }, '未記録'),
-    FATIGUE.map((l, i) => h('option', { value: String(i), selected: cur === i }, l))),
-    h('p', { class: 'small muted' }, '予想を確定した時点の値がその杯に記録されます。終了まで他の人には見えません。'),
   );
 }
 
@@ -575,7 +554,7 @@ function renderPlaying() {
     title: `第${c.number}杯`, label: '何個入っていると思う？', help: '飲んでから、予想した数を入力して確定してください。',
     confirmLabel: 'あなたの予想', confirmNote: 'これで確定しますか？確定後は変更できません。正解は終了後に公開されます。', unit: '個',
     send: (d) => api('POST', `/api/rooms/${g.roomId}/guess`, { request_id: d.requestId, round_id: c.round_id, version: c.round_version, count: Number(d.value) }),
-  }), fatigueCard());
+  }));
   else nodes.push(waitingCard());
 
   if (st.me.role === 'B' || isA) nodes.push(mineCard());
@@ -780,10 +759,32 @@ function renderResult() {
   const text = g.anon ? res.text_anonymous : res.text;
   const stat = (k, v, wide) => h('div', { class: `stat${wide ? ' wide' : ''}` }, h('div', { class: 'k' }, k), h('div', { class: 'v' }, v));
   const biasText = s.bias === null ? '—' : `${s.bias === 0 ? '0' : (s.bias > 0 ? '＋' : '') + fmtNum(s.bias, 2)}個${s.bias < 0 ? '（少なめ）' : s.bias > 0 ? '（多め）' : ''}`;
+  const cond = res.condition;
 
   mount(
     h('h1', {}, '結果'),
     h('p', { class: 'muted small' }, `${fmtDate(res.room.started_at)} ・ 飲む人：${res.a_nickname}`),
+    // 一番上は短い要約だけにして、すぐ各杯が見えるようにする
+    h('p', { class: 'summary' }, `正答率 ${fmtPct(s.accuracy)}`, h('span', { class: 'muted small' }, `（${s.valid_count}杯中 ${s.correct_count}杯正解）`)),
+
+    // 1. 各杯
+    h('h2', {}, '各杯の結果'),
+    valid.length ? valid.map((r) => {
+      const hit = r.error === 0;
+      return h('div', { class: `round ${hit ? 'hit' : 'miss'}` },
+        h('div', { class: 'head' }, h('span', {}, `${r.number}杯目［${r.b_nickname}］`), h('span', { class: 'verdict' }, hit ? '◯ 正解' : `外れ ${fmtSigned(r.error)}`)),
+        h('div', {}, `実投入 ${r.actual_count}個 → 予想 ${r.guess_count}個`),
+        h('div', { class: 'small muted' }, r.condition),
+      );
+    }) : h('p', { class: 'muted' }, '有効な杯はありません。'),
+    voids.length ? [h('h3', {}, '無効にした杯'), voids.map((r) => h('div', { class: 'round void' },
+      h('div', { class: 'head' }, h('span', {}, `${r.number}杯目［${r.b_nickname}］`), h('span', { class: 'verdict' }, '無効')),
+      h('div', {}, `実投入 ${r.actual_count ?? '—'}個 → 予想 ${r.guess_count ?? '—'}個`),
+      h('div', { class: 'small' }, `理由：${r.void_reason}`),
+    ))] : null,
+
+    // 2. 集計
+    h('h2', {}, '集計'),
     h('section', { class: 'card' },
       h('div', { class: 'stats' },
         stat('正答率', `${fmtPct(s.accuracy)}`, true),
@@ -795,10 +796,18 @@ function renderResult() {
       ),
       h('p', { class: 'small muted' }, 'ズレ＝予想−実投入（＋は多く予想、−は少なく予想）'),
     ),
+    cond ? h('section', { class: `card condition lv${cond.level}` },
+      h('div', { class: 'k small' }, '調子の目安'),
+      h('div', { class: 'cond-text' }, cond.text),
+      cond.trend ? h('p', {}, cond.trend) : null,
+      h('p', { class: 'small muted' }, 'ズレが小さいほど元気、大きいほどお疲れ寄り、という遊びの判定です。'),
+    ) : null,
+
+    // 3. コピー
+    h('h2', {}, '結果をコピー'),
     h('section', { class: 'card' },
-      h('h2', {}, '結果をコピー'),
       h('div', { class: 'row' },
-        h('label', { class: 'grow small', style: null },
+        h('label', { class: 'grow small' },
           h('input', { type: 'checkbox', checked: g.anon || null, onchange: (e) => { g.anon = e.target.checked; g.copyMsg = null; renderResult(); } }),
           ' ニックネームを省く（匿名）')),
       h('button', {
@@ -815,26 +824,17 @@ function renderResult() {
         h('summary', {}, g.showText ? 'コピーできなかったため、下の文章を長押しして選択してください' : '文章を表示'),
         h('textarea', { readonly: true, 'aria-label': '結果の文章', onfocus: (e) => e.target.select() }, text)),
     ),
-    h('h2', {}, '各杯の結果'),
-    valid.length ? valid.map((r) => {
-      const hit = r.error === 0;
-      return h('div', { class: `round ${hit ? 'hit' : 'miss'}` },
-        h('div', { class: 'head' }, h('span', {}, `${r.number}杯目［${r.b_nickname}］`), h('span', { class: 'verdict' }, hit ? '◯ 正解' : `外れ ${fmtSigned(r.error)}`)),
-        h('div', {}, `実投入 ${r.actual_count}個 → 予想 ${r.guess_count}個`),
-        h('div', { class: 'small muted' }, `疲れ具合：${r.fatigue === null ? '未記録' : FATIGUE[r.fatigue]}`),
-      );
-    }) : h('p', { class: 'muted' }, '有効な杯はありません。'),
-    voids.length ? [h('h2', {}, '無効にした杯'), voids.map((r) => h('div', { class: 'round void' },
-      h('div', { class: 'head' }, h('span', {}, `${r.number}杯目［${r.b_nickname}］`), h('span', { class: 'verdict' }, '無効')),
-      h('div', {}, `実投入 ${r.actual_count ?? '—'}個 → 予想 ${r.guess_count ?? '—'}個`),
-      h('div', { class: 'small' }, `理由：${r.void_reason}`),
-    ))] : null,
+
+    // 4. 入れた人ごと
     res.by_b.length ? [h('h2', {}, '入れた人ごとの結果'), h('section', { class: 'card' },
-      h('p', { class: 'small muted' }, '入れた個数や杯数が違うため、入れた人の難しさの順位ではありません。'),
       h('ul', { class: 'plain' }, res.by_b.map((b) => h('li', {}, h('div', {},
         h('div', { class: 'grow' }, h('strong', {}, b.nickname)),
         h('div', { class: 'small' }, `有効${b.valid_count}杯・正解${b.correct_count}杯（${fmtPct(b.accuracy)}）・平均のズレ ${b.mean_abs_error === null ? '—' : fmtNum(b.mean_abs_error, 2) + '個'}`),
-      )))))] : null,
+      )))),
+      h('p', { class: 'small muted' }, '入れた個数や杯数が違うため、入れた人の難しさの順位ではありません。'),
+    )] : null,
+
+    // 5. 保存・削除
     h('section', { class: 'card' },
       h('a', { class: 'btn block', href: `/api/rooms/${g.roomId}/export.json`, download: true }, 'JSONで保存'),
       h('p', { class: 'small muted' }, `この結果は ${fmtDate(res.room.expires_at)} まで保存され、その後自動で削除されます。`),

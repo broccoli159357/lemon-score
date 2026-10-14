@@ -4,10 +4,9 @@
 
 import { tx } from './db.js';
 import { AppError, newId, newToken, hashToken, normalizeNickname, parseCount, parseRole, parseReason } from './util.js';
-import { computeStats, computeStatsByB, formatResultText } from './stats.js';
+import { computeStats, computeStatsByB, formatResultText, cupCondition, conditionComment } from './stats.js';
 
-export const FATIGUE_LABELS = ['疲れていない', '少し疲れている', 'そこそこ疲れている', 'かなり疲れている', 'とても疲れている'];
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2; // v2: 疲れ具合の自己申告を廃止し、ズレからの調子の目安に置き換え
 
 const err = (status, code, msg) => new AppError(status, code, msg);
 const NOT_FOUND = () => err(404, 'NOT_FOUND', 'ゲームが見つかりません。期限切れか削除された可能性があります');
@@ -352,24 +351,13 @@ export class Game {
         if (r.id !== round_id) throw err(409, 'ROUND_CHANGED', '杯が切り替わりました。画面を確認してください');
         if (r.version !== version) throw err(409, 'ROUND_CHANGED', '入れた人が記録を訂正しました。予想をもう一度確認して確定してください');
         const n = parseCount(count, this.cfg.maxCount);
-        this.q("UPDATE rounds SET guess_count = ?, fatigue_at_prediction = ?, guess_at = ?, status = 'COMPLETED', version = version + 1 WHERE id = ?")
-          .run(n, me.fatigue, this.now(), r.id);
+        this.q("UPDATE rounds SET guess_count = ?, guess_at = ?, status = 'COMPLETED', version = version + 1 WHERE id = ?")
+          .run(n, this.now(), r.id);
         this._advance(room, room.current_b_index);
         this._log(room.id, 'GUESS_SUBMITTED', me.id, String(r.number));
         this._touch(room, { activity: true });
         return { ok: true };
       });
-    });
-  }
-
-  setFatigue(roomId, token, level) {
-    return tx(this.db, () => {
-      const { room, me } = this._approved(roomId, token);
-      if (me.id !== room.a_member_id) throw FORBIDDEN('疲れ具合を記録できるのは飲む人だけです');
-      if (room.state === 'FINISHED') throw err(409, 'FINISHED', 'ゲームは終了しています');
-      if (level !== null && !(Number.isInteger(level) && level >= 0 && level <= 4)) throw err(400, 'BAD_FATIGUE', '疲れ具合の値が不正です');
-      this.q('UPDATE members SET fatigue = ? WHERE id = ?').run(level, me.id);
-      return { ok: true };
     });
   }
 
@@ -594,7 +582,6 @@ export class Game {
       rounds: [],
       completed_count: 0,
     };
-    if (me.id === room.a_member_id) out.me.fatigue = me.fatigue;
 
     if (me.is_host && room.state === 'LOBBY') {
       out.pending_members = members.filter((m) => m.status === 'PENDING').map((m) => ({ id: m.id, nickname: m.nickname, role: m.role }));
@@ -669,9 +656,10 @@ export class Game {
         number: r.number, b_nickname: name(r.b_member_id), status: r.status,
         actual_count: r.actual_count, guess_count: r.guess_count,
         error: r.status === 'COMPLETED' ? r.guess_count - r.actual_count : null,
-        fatigue: r.fatigue_at_prediction, void_reason: r.void_reason,
+        condition: r.status === 'COMPLETED' ? cupCondition(Math.abs(r.guess_count - r.actual_count)) : null,
+        void_reason: r.void_reason,
       })),
-      fatigue_labels: FATIGUE_LABELS,
+      condition: conditionComment(rounds),
       text: formatResultText(textArgs),
       text_anonymous: formatResultText({ ...textArgs, anonymous: true }),
     };
@@ -696,12 +684,13 @@ export class Game {
         number: r.number, b: name(r.b_member_id), status: r.status === 'COMPLETED' ? 'COMPLETED' : 'VOID',
         actual_count: r.actual_count, guess_count: r.guess_count,
         error: r.status === 'COMPLETED' ? r.guess_count - r.actual_count : null,
-        fatigue_at_prediction: r.fatigue_at_prediction,
+        condition: r.status === 'COMPLETED' ? cupCondition(Math.abs(r.guess_count - r.actual_count)) : null,
         actual_at: iso(r.actual_at), guess_at: iso(r.guess_at),
         void_reason: r.void_reason, voided_at: iso(r.voided_at),
       })),
       corrections: corrections.map((c) => ({ round: roundNo.get(c.round_id), by: name(c.member_id), before: c.before_count, after: c.after_count, at: iso(c.at) })),
       stats: computeStats(rounds),
+      condition: conditionComment(rounds),
       stats_by_b: computeStatsByB(rounds, bMembers).map(({ member_id, ...rest }) => rest),
     };
   }

@@ -262,21 +262,22 @@ describe('進行と秘匿', () => {
     assert.equal((await ctx.host.post(api(ctx, 'resume'), { request_id: rid() })).status, 409);
   });
 
-  test('疲れ具合はAだけが設定し、予想時点の値を杯に保存する', async () => {
+  test('調子の目安は終了後の結果にだけ出て、自己申告のAPIはない', async () => {
     const ctx = await setupRoom(app, ['A', 'B']);
-    await ctx.a.ok('POST', api(ctx, 'fatigue'), { level: 2 });
-    assert.equal((await ctx.clients[1].post(api(ctx, 'fatigue'), { level: 1 })).status, 403);
+    assert.equal((await ctx.a.post(api(ctx, 'fatigue'), { level: 2 })).status, 404);
     await start(ctx);
-    await playRound(ctx, 1, 1);
-    await ctx.a.ok('POST', api(ctx, 'fatigue'), { level: 4 });
-    await playRound(ctx, 1, 1);
-    await ctx.a.ok('POST', api(ctx, 'fatigue'), { level: null });
-    await playRound(ctx, 1, 1);
-    // 終了前に他の参加者へは出さない
-    assert.ok(!(await ctx.clients[1].get(api(ctx, 'state'))).text.includes('fatigue'));
+    await playRound(ctx, 3, 3);
+    await playRound(ctx, 3, 8);
+    for (const c of ctx.clients) assert.ok(!/condition|疲れ|元気/.test((await c.get(api(ctx, 'state'))).text));
     await ctx.host.ok('POST', api(ctx, 'finish'), { request_id: rid() });
     const res = await ctx.clients[1].ok('GET', api(ctx, 'result'));
-    assert.deepEqual(res.rounds.map((r) => r.fatigue), [2, 4, null]);
+    assert.deepEqual(res.rounds.map((r) => r.condition), ['ぴったり！冴えてる', '疲れていませんか？']);
+    assert.equal(res.condition.text, 'ちょっと疲れていませんか？');
+    assert.ok(res.text.includes('調子：ちょっと疲れていませんか？'));
+    const j = await ctx.a.ok('GET', api(ctx, 'export.json'));
+    assert.equal(j.schema_version, 2);
+    assert.ok(!JSON.stringify(j).includes('fatigue'));
+    assert.equal(j.condition.level, 2);
   });
 
   test('JSON書き出しに認証情報・招待トークンを含めない', async () => {
@@ -290,7 +291,7 @@ describe('進行と秘匿', () => {
     assert.equal(r.status, 200);
     assert.match(r.headers.get('content-disposition'), /attachment/);
     const j = r.json;
-    assert.equal(j.schema_version, 1);
+    assert.equal(j.schema_version, 2);
     assert.equal(j.rounds[0].error, -1);
     assert.match(j.game.started_at, /Z$/);
     assert.ok(!r.text.includes(ctx.inviteToken));

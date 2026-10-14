@@ -199,7 +199,6 @@ export function createServer(game, cfg) {
   post('actual', (c) => game.submitActual(c.roomId, c.session, c.body));
   post('actual/correct', (c) => game.correctActual(c.roomId, c.session, c.body));
   post('guess', (c) => game.submitGuess(c.roomId, c.session, c.body));
-  post('fatigue', (c) => game.setFatigue(c.roomId, c.session, c.body.level ?? null));
   post('skip', (c) => game.skip(c.roomId, c.session, c.body));
   post('void', (c) => game.voidRound(c.roomId, c.session, c.body));
   post('pause', (c) => game.pause(c.roomId, c.session, c.body));

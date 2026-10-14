@@ -31,6 +31,46 @@ export function computeStatsByB(rounds, bMembers) {
   });
 }
 
+// ---------- 調子の目安（疲れ具合の自己申告の代わり） ----------
+// ズレが小さい＝疲れていない、ズレが大きい＝疲れ寄り、という遊びの判定。
+// 実投入数・ソーダの量などは統制していないため、あくまで目安として表示する。
+
+/** 1杯ごとのひとこと（ズレの絶対値から） */
+export function cupCondition(absError) {
+  if (absError === 0) return 'ぴったり！冴えてる';
+  if (absError === 1) return '元気そう';
+  if (absError <= 3) return 'ちょっと疲れてる？';
+  return '疲れていませんか？';
+}
+
+const CONDITION_LEVELS = [
+  [0.5, '疲れてなさそう！感覚バッチリ'],
+  [1.5, 'まだ元気そう？'],
+  [3, 'ちょっと疲れていませんか？'],
+  [Infinity, 'だいぶ疲れていませんか？ひと休みしよう'],
+];
+
+/**
+ * 全体のひとこと。有効杯が0なら null。
+ * 4杯以上あれば前半と後半の平均のズレを比べ、1個以上の差で傾向を添える。
+ */
+export function conditionComment(rounds) {
+  const valid = rounds.filter((r) => r.status === 'COMPLETED').sort((a, b) => a.number - b.number);
+  if (!valid.length) return null;
+  const abs = valid.map((r) => Math.abs(r.guess_count - r.actual_count));
+  const mean = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+  const m = mean(abs);
+  const level = CONDITION_LEVELS.findIndex(([max]) => m <= max);
+  let trend = null;
+  if (abs.length >= 4) {
+    const half = Math.floor(abs.length / 2);
+    const diff = mean(abs.slice(abs.length - half)) - mean(abs.slice(0, half));
+    if (diff >= 1) trend = '後半はズレが大きめ。疲れてきたかも？';
+    else if (diff <= -1) trend = '後半のほうが冴えてる！調子が出てきた？';
+  }
+  return { level, text: CONDITION_LEVELS[level][1], trend };
+}
+
 /** 小数 digits 桁で丸め、末尾の不要な0を省く。負号はU+2212。 */
 export function fmtNum(x, digits) {
   if (x === null || x === undefined) return '—';
@@ -87,6 +127,8 @@ export function formatResultText({ heldAt, timezone, timezoneLabel, aName, round
   lines.push(`予想の偏り：${fmtBias(st.bias)}`);
   lines.push(`最大のズレ：${fmtUnit(st.max_abs_error, 0, '個')}`);
   lines.push(`±1以内：${fmtPercent(st.within_one_rate)}`);
+  const cond = conditionComment(rounds);
+  if (cond) lines.push(`調子：${cond.text}${cond.trend ? `（${cond.trend}）` : ''}`);
 
   const sorted = [...rounds].sort((a, b) => a.number - b.number);
   const valid = sorted.filter((r) => r.status === 'COMPLETED');

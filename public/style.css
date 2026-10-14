@@ -127,3 +127,9 @@ ul.plain > li:last-child { border-bottom: 0; }
 .menu > button { width: 100%; justify-content: flex-start; margin: 6px 0; }
 details > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 700; }
 .card > button.block, .card > .btn.block { margin-top: 12px; }
+.summary { font-size: 20px; font-weight: 800; margin: 4px 0 8px; }
+.summary .small { font-weight: 400; margin-left: 4px; }
+.condition .cond-text { font-size: 20px; font-weight: 800; margin: 2px 0; }
+.condition.lv0 { background: var(--info-soft); }
+.condition.lv1 { background: var(--card); }
+.condition.lv2, .condition.lv3 { background: var(--lemon-soft); }
