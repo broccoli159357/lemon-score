@@ -24,6 +24,15 @@ export function computeStats(rounds) {
   };
 }
 
+/**
+ * 飲んだレモンの合計。飲む人が予想まで済ませた杯（＝実際に飲んだ杯）の実投入数を足す。
+ * 予想後に無効にした杯も飲んではいるので含め、予想前に無効にした杯は含めない。
+ */
+export function totalLemons(rounds) {
+  return rounds.filter((r) => r.guess_count !== null && r.guess_count !== undefined && r.actual_count !== null)
+    .reduce((s, r) => s + r.actual_count, 0);
+}
+
 export function computeStatsByB(rounds, bMembers) {
   return bMembers.map((m) => {
     const s = computeStats(rounds.filter((r) => r.b_member_id === m.id));
@@ -122,6 +131,7 @@ export function formatResultText({ heldAt, timezone, timezoneLabel, aName, round
   const lines = ['レモンスコア'];
   lines.push(formatDateTime(heldAt, timezone) + (timezoneLabel ? `（${timezoneLabel}）` : ''));
   if (!anonymous) lines.push(`飲む人：${aName}`);
+  lines.push(`合計レモン：${totalLemons(rounds)}個`);
   lines.push(`有効：${st.valid_count}杯 / 正解：${st.correct_count}杯（${fmtPercent(st.accuracy)}）`);
   lines.push(`平均のズレ：${fmtUnit(st.mean_abs_error, 2, '個')}`);
   lines.push(`予想の偏り：${fmtBias(st.bias)}`);
@@ -142,7 +152,5 @@ export function formatResultText({ heldAt, timezone, timezoneLabel, aName, round
     lines.push('');
     for (const r of voids) lines.push(`無効：第${r.number}杯（${r.void_reason}）`);
   }
-  lines.push('');
-  lines.push('ズレは「予想−実投入」。');
   return lines.join('\n');
 }

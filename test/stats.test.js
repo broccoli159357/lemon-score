@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeStats, formatResultText, fmtNum, fmtBias, cupCondition, conditionComment } from '../src/stats.js';
+import { computeStats, formatResultText, fmtNum, fmtBias, cupCondition, conditionComment, totalLemons } from '../src/stats.js';
 
 const example = [
   [1, 'はな', 3, 3], [2, 'じろう', 6, 4], [3, 'はな', 2, 3], [4, 'じろう', 8, 7], [5, 'はな', 0, 1],
@@ -26,6 +26,7 @@ test('結果テキストが仕様の例と一致する', () => {
     'レモンスコア',
     '2026/10/10 19:30（日本時間）',
     '飲む人：たろう',
+    '合計レモン：19個',
     '有効：5杯 / 正解：1杯（20%）',
     '平均のズレ：1個',
     '予想の偏り：−0.2個（少なめ）',
@@ -38,8 +39,6 @@ test('結果テキストが仕様の例と一致する', () => {
     '3杯目［はな］実2 → 予想3：＋1',
     '4杯目［じろう］実8 → 予想7：−1',
     '5杯目［はな］実0 → 予想1：＋1',
-    '',
-    'ズレは「予想−実投入」。',
   ].join('\n'));
 });
 
@@ -97,4 +96,13 @@ test('全体の調子：平均のズレで4段階、前半と後半の差で傾�
 test('有効杯0なら結果テキストに調子の行を出さない', () => {
   const text = formatResultText({ heldAt: 0, timezone: 'Asia/Tokyo', timezoneLabel: '日本時間', aName: 'A', rounds: [], nameOf: () => '' });
   assert.ok(!text.includes('調子'));
+});
+
+test('合計レモン：予想まで済んだ杯（＝飲んだ杯）の実投入数の合計', () => {
+  assert.equal(totalLemons([]), 0);
+  assert.equal(totalLemons([
+    { number: 1, status: 'COMPLETED', actual_count: 3, guess_count: 4 },
+    { number: 2, status: 'VOID', actual_count: 5, guess_count: 2, void_reason: '入力ミス' }, // 飲んでから無効 → 含める
+    { number: 3, status: 'VOID', actual_count: 7, guess_count: null, void_reason: 'こぼした' }, // 飲む前に無効 → 含めない
+  ]), 8);
 });

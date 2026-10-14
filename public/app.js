@@ -765,7 +765,10 @@ function renderResult() {
     h('h1', {}, '結果'),
     h('p', { class: 'muted small' }, `${fmtDate(res.room.started_at)} ・ 飲む人：${res.a_nickname}`),
     // 一番上は短い要約だけにして、すぐ各杯が見えるようにする
-    h('p', { class: 'summary' }, `正答率 ${fmtPct(s.accuracy)}`, h('span', { class: 'muted small' }, `（${s.valid_count}杯中 ${s.correct_count}杯正解）`)),
+    h('div', { class: 'stats summary' },
+      h('div', { class: 'stat' }, h('div', { class: 'k' }, '正答率'), h('div', { class: 'v' }, fmtPct(s.accuracy)), h('div', { class: 'k' }, `${s.valid_count}杯中 ${s.correct_count}杯正解`)),
+      h('div', { class: 'stat' }, h('div', { class: 'k' }, '合計レモン'), h('div', { class: 'v' }, `${res.total_lemons}個`), h('div', { class: 'k' }, '飲んだ杯の合計')),
+    ),
 
     // 1. 各杯
     h('h2', {}, '各杯の結果'),
@@ -794,7 +797,6 @@ function renderResult() {
         stat('最大のズレ', s.max_abs_error === null ? '—' : `${s.max_abs_error}個`),
         stat('±1以内', fmtPct(s.within_one_rate), true),
       ),
-      h('p', { class: 'small muted' }, 'ズレ＝予想−実投入（＋は多く予想、−は少なく予想）'),
     ),
     cond ? h('section', { class: `card condition lv${cond.level}` },
       h('div', { class: 'k small' }, '調子の目安'),

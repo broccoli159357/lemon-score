@@ -4,7 +4,7 @@
 
 import { tx } from './db.js';
 import { AppError, newId, newToken, hashToken, normalizeNickname, parseCount, parseRole, parseReason } from './util.js';
-import { computeStats, computeStatsByB, formatResultText, cupCondition, conditionComment } from './stats.js';
+import { computeStats, computeStatsByB, formatResultText, cupCondition, conditionComment, totalLemons } from './stats.js';
 
 const SCHEMA_VERSION = 2; // v2: 疲れ具合の自己申告を廃止し、ズレからの調子の目安に置き換え
 
@@ -651,6 +651,7 @@ export class Game {
       me: { id: me.id, is_host: !!me.is_host, role: me.role },
       a_nickname: name(room.a_member_id),
       stats: computeStats(rounds),
+      total_lemons: totalLemons(rounds),
       by_b: computeStatsByB(rounds, bMembers),
       rounds: rounds.map((r) => ({
         number: r.number, b_nickname: name(r.b_member_id), status: r.status,
@@ -690,6 +691,7 @@ export class Game {
       })),
       corrections: corrections.map((c) => ({ round: roundNo.get(c.round_id), by: name(c.member_id), before: c.before_count, after: c.after_count, at: iso(c.at) })),
       stats: computeStats(rounds),
+      total_lemons: totalLemons(rounds),
       condition: conditionComment(rounds),
       stats_by_b: computeStatsByB(rounds, bMembers).map(({ member_id, ...rest }) => rest),
     };
