@@ -1,12 +1,17 @@
-# 既存サイトの server { listen 443 ssl; ... } の中に追加して、
-# https://example.com/lemon/ で公開する例。アプリ側は BASE_URL=https://example.com/lemon にする。
+# 既存サイトの下（https://example.com/lemon/）で公開する例。
+# /etc/nginx/snippets/lemon-score.conf に置き、既存サイトの server { listen 443 ssl; ... } から
+#   include /etc/nginx/snippets/lemon-score.conf;
+# で読み込む。アプリ側は BASE_URL=https://example.com/lemon にする。
 location = /lemon { return 301 /lemon/; }
-location /lemon/ {
+location ^~ /lemon/ {
     # 末尾の / で /lemon を取り除いてアプリへ渡す
     proxy_pass http://127.0.0.1:3000/;
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-For $remote_addr;
     proxy_set_header X-Forwarded-Proto $scheme;
-    # 招待トークンがパスに入るため、この場所のアクセスログは取らない
+    # 招待トークンがパスに入るため、アクセスログは取らない
     access_log off;
+    # add_header を1つでも書くと、server 側の add_header（既存サイト用のCSP等）を継承しない。
+    # 既存サイトのCSPがこのアプリに重なるとJavaScriptが動かなくなるため、消さないこと。
+    add_header Strict-Transport-Security "max-age=300" always;
 }
