@@ -768,12 +768,12 @@ function renderResult() {
     // 一番上：正答率・合計レモン・調子の目安をひとまとまりで
     h('section', { class: `card summary${cond ? ` lv${cond.level}` : ''}` },
       h('div', { class: 'stats' },
-        h('div', { class: 'stat' }, h('div', { class: 'k' }, '正答率'), h('div', { class: 'v' }, fmtPct(s.accuracy)), h('div', { class: 'k' }, `${s.valid_count}杯中 ${s.correct_count}杯正解`)),
-        h('div', { class: 'stat' }, h('div', { class: 'k' }, '合計レモン'), h('div', { class: 'v' }, `${res.total_lemons}個`), h('div', { class: 'k' }, '飲んだ杯の合計')),
+        h('div', { class: 'stat' }, h('div', { class: 'k' }, '🎯 正答率'), h('div', { class: 'v' }, fmtPct(s.accuracy)), h('div', { class: 'k' }, `${s.valid_count}杯中 ${s.correct_count}杯正解`)),
+        h('div', { class: 'stat' }, h('div', { class: 'k' }, '🍋 合計レモン'), h('div', { class: 'v' }, `${res.total_lemons}個`), h('div', { class: 'k' }, '飲んだ杯の合計')),
       ),
       cond ? h('div', { class: 'condition' },
         h('div', { class: 'k small' }, '調子の目安'),
-        h('div', { class: 'cond-text' }, cond.text),
+        h('div', { class: 'cond-text' }, `${cond.emoji} ${cond.text}`),
         cond.trend ? h('p', {}, cond.trend) : null,
         h('p', { class: 'small muted' }, 'ズレが小さいほど元気、大きいほどお疲れ寄り、という遊びの判定です。'),
       ) : null,
@@ -784,7 +784,7 @@ function renderResult() {
     valid.length ? valid.map((r) => {
       const hit = r.error === 0;
       return h('div', { class: `round ${hit ? 'hit' : 'miss'}` },
-        h('div', { class: 'head' }, h('span', {}, `${r.number}杯目［${r.b_nickname}］`), h('span', { class: 'verdict' }, hit ? '◯ 正解' : `外れ ${fmtSigned(r.error)}`)),
+        h('div', { class: 'head' }, h('span', {}, `${r.number}杯目［${r.b_nickname}］`), h('span', { class: 'verdict' }, hit ? '🎯 正解' : `❌ はずれ ${fmtSigned(r.error)}`)),
         h('div', {}, `実投入 ${r.actual_count}個 → 予想 ${r.guess_count}個`),
         h('div', { class: 'small muted' }, r.condition),
       );

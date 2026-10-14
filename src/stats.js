@@ -53,10 +53,10 @@ export function cupCondition(absError) {
 }
 
 const CONDITION_LEVELS = [
-  [0.5, '疲れてなさそう！感覚バッチリ'],
-  [1.5, 'まだ元気そう？'],
-  [3, 'ちょっと疲れていませんか？'],
-  [Infinity, 'だいぶ疲れていませんか？ひと休みしよう'],
+  [0.5, '疲れてなさそう！感覚バッチリ', '✨'],
+  [1.5, 'まだ元気そう？', '😊'],
+  [3, 'ちょっと疲れていませんか？', '😪'],
+  [Infinity, 'だいぶ疲れていませんか？ひと休みしよう', '💤'],
 ];
 
 /**
@@ -77,7 +77,7 @@ export function conditionComment(rounds) {
     if (diff >= 1) trend = '後半はズレが大きめ。疲れてきたかも？';
     else if (diff <= -1) trend = '後半のほうが冴えてる！調子が出てきた？';
   }
-  return { level, text: CONDITION_LEVELS[level][1], trend };
+  return { level, text: CONDITION_LEVELS[level][1], emoji: CONDITION_LEVELS[level][2], trend };
 }
 
 /** 小数 digits 桁で丸め、末尾の不要な0を省く。負号はU+2212。 */
@@ -111,7 +111,7 @@ export function fmtUnit(x, digits, unit) {
 
 export function roundDiffLabel(r) {
   const e = r.guess_count - r.actual_count;
-  return e === 0 ? '正解' : fmtSigned(e);
+  return e === 0 ? '🎯正解' : fmtSigned(e);
 }
 
 export function formatDateTime(ms, timezone) {
@@ -131,14 +131,14 @@ export function formatResultText({ heldAt, timezone, timezoneLabel, aName, round
   const lines = ['レモンスコア'];
   lines.push(formatDateTime(heldAt, timezone) + (timezoneLabel ? `（${timezoneLabel}）` : ''));
   if (!anonymous) lines.push(`飲む人：${aName}`);
-  lines.push(`合計レモン：${totalLemons(rounds)}個`);
+  lines.push(`🍋合計レモン：${totalLemons(rounds)}個`);
   lines.push(`有効：${st.valid_count}杯 / 正解：${st.correct_count}杯（${fmtPercent(st.accuracy)}）`);
   lines.push(`平均のズレ：${fmtUnit(st.mean_abs_error, 2, '個')}`);
   lines.push(`予想の偏り：${fmtBias(st.bias)}`);
   lines.push(`最大のズレ：${fmtUnit(st.max_abs_error, 0, '個')}`);
   lines.push(`±1以内：${fmtPercent(st.within_one_rate)}`);
   const cond = conditionComment(rounds);
-  if (cond) lines.push(`調子：${cond.text}${cond.trend ? `（${cond.trend}）` : ''}`);
+  if (cond) lines.push(`調子：${cond.emoji}${cond.text}${cond.trend ? `（${cond.trend}）` : ''}`);
 
   const sorted = [...rounds].sort((a, b) => a.number - b.number);
   const valid = sorted.filter((r) => r.status === 'COMPLETED');

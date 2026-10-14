@@ -273,7 +273,7 @@ describe('進行と秘匿', () => {
     const res = await ctx.clients[1].ok('GET', api(ctx, 'result'));
     assert.deepEqual(res.rounds.map((r) => r.condition), ['ぴったり！冴えてる', '疲れていませんか？']);
     assert.equal(res.condition.text, 'ちょっと疲れていませんか？');
-    assert.ok(res.text.includes('調子：ちょっと疲れていませんか？'));
+    assert.ok(res.text.includes('調子：😪ちょっと疲れていませんか？'));
     const j = await ctx.a.ok('GET', api(ctx, 'export.json'));
     assert.equal(j.schema_version, 2);
     assert.ok(!JSON.stringify(j).includes('fatigue'));
